@@ -22,6 +22,8 @@ import com.example.project_group12.repository.AuthRepository
 import com.example.project_group12.repository.SongRepository
 import com.example.project_group12.viewmodel.MainViewModel
 import com.example.project_group12.viewmodel.MainViewModelFactory
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -91,6 +93,9 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
+        // BẬT TÍNH NĂNG "ĂNG-TEN" BẮT SỰ KIỆN ĐỔI QUYỀN REAL-TIME
+        listenForRoleChanges(dao, authRepository)
+
         binding.btnHomeLogin.setOnClickListener { startActivity(Intent(this, LoginActivity::class.java)) }
         binding.btnHomeRegister.setOnClickListener { startActivity(Intent(this, RegisterActivity::class.java)) }
 
@@ -142,6 +147,42 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    // --- HÀM MỚI: THEO DÕI SỰ THAY ĐỔI QUYỀN TỪ FIREBASE ---
+    private fun listenForRoleChanges(dao: AppDao, authRepository: AuthRepository) {
+        val currentUser = FirebaseAuth.getInstance().currentUser
+        if (currentUser != null) {
+            FirebaseFirestore.getInstance()
+                .collection("users").document(currentUser.uid)
+                .addSnapshotListener { snapshot, e ->
+                    if (e != null) return@addSnapshotListener
+
+                    if (snapshot != null && snapshot.exists()) {
+                        val cloudRole = snapshot.getString("role") ?: "user"
+
+                        lifecycleScope.launch(Dispatchers.IO) {
+                            val localUser = dao.getCurrentUser()
+                            // Nếu role trên mạng khác với role lưu trong máy -> Admin đã can thiệp
+                            if (localUser != null && localUser.role != "guest" && localUser.role != cloudRole) {
+                                // Tắt nhạc
+                                MusicPlayerManager.stop()
+                                // Xóa dữ liệu local và đăng xuất Firebase
+                                authRepository.logout()
+
+                                withContext(Dispatchers.Main) {
+                                    Toast.makeText(this@MainActivity, "Quyền của bạn đã thay đổi. Vui lòng đăng nhập lại!", Toast.LENGTH_LONG).show()
+                                    // Đá văng ra màn hình đăng nhập, xóa sạch các trang đang mở trước đó
+                                    val intent = Intent(this@MainActivity, LoginActivity::class.java)
+                                    intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                                    startActivity(intent)
+                                    finish()
+                                }
+                            }
+                        }
+                    }
+                }
+        }
+    }
+
     private fun setupGenreFilters() {
         binding.btnGenreAll.setOnClickListener { selectGenre("Tất cả", binding.btnGenreAll) }
         binding.btnGenrePop.setOnClickListener { selectGenre("Pop", binding.btnGenrePop) }
@@ -167,7 +208,6 @@ class MainActivity : AppCompatActivity() {
             binding.tvMiniTitle.text = currentSong.title
             binding.tvMiniArtist.text = currentSong.artist
 
-            // Nạp ảnh đại diện bài hát vào Mini Player
             Glide.with(this)
                 .load(currentSong.coverUrl)
                 .placeholder(android.R.drawable.ic_media_play)
@@ -198,12 +238,22 @@ class MainActivity : AppCompatActivity() {
 
     private fun showProfileMenu(view: View, authRepository: AuthRepository, role: String?) {
         val popup = PopupMenu(this, view)
-        if (role == "admin") popup.menu.add("Quản lý nhạc (Admin)")
+
+        if (role == "admin") {
+            popup.menu.add("Quản lý nhạc (Admin)")
+            popup.menu.add("Phân quyền người dùng")
+        }
+
         popup.menu.add("Đăng xuất")
+
         popup.setOnMenuItemClickListener {
             when (it.title) {
                 "Quản lý nhạc (Admin)" -> {
                     startActivity(Intent(this@MainActivity, AdminActivity::class.java))
+                    true
+                }
+                "Phân quyền người dùng" -> {
+                    startActivity(Intent(this@MainActivity, UserManagementActivity::class.java))
                     true
                 }
                 "Đăng xuất" -> {

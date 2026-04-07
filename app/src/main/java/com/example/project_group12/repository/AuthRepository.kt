@@ -2,6 +2,7 @@ package com.example.project_group12.repository
 
 import com.example.project_group12.data.AppDao
 import com.example.project_group12.data.UserLocal
+import com.example.project_group12.data.UserModel // BỔ SUNG: Import thư viện UserModel
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseAuthUserCollisionException // ĐÃ THÊM: Thư viện bắt lỗi trùng tài khoản
 import com.google.firebase.firestore.FirebaseFirestore
@@ -12,6 +13,44 @@ import kotlinx.coroutines.withContext
 class AuthRepository(private val dao: AppDao) {
     private val auth = FirebaseAuth.getInstance()
     private val firestore = FirebaseFirestore.getInstance()
+
+    // Lấy danh sách toàn bộ người dùng từ Firestore
+    suspend fun getAllUsers(): Result<List<UserModel>> = withContext(Dispatchers.IO) {
+        try {
+            val snapshot = firestore.collection("users").get().await()
+            val users = snapshot.documents.mapNotNull { doc ->
+                val uid = doc.id
+                val username = doc.getString("username") ?: ""
+                val displayName = doc.getString("displayName") ?: ""
+                val role = doc.getString("role") ?: "user"
+
+                UserModel(uid, username, displayName, role)
+            }
+            Result.success(users)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    // Cập nhật quyền của người dùng (Admin <-> User)
+    suspend fun updateUserRole(uid: String, newRole: String): Result<Boolean> = withContext(Dispatchers.IO) {
+        try {
+            firestore.collection("users").document(uid).update("role", newRole).await()
+            Result.success(true)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    // THÊM VÀO: Xóa người dùng khỏi hệ thống (Firestore)
+    suspend fun deleteUser(uid: String): Result<Boolean> = withContext(Dispatchers.IO) {
+        try {
+            firestore.collection("users").document(uid).delete().await()
+            Result.success(true)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
 
     suspend fun login(username: String, pass: String): Result<UserLocal> = withContext(Dispatchers.IO) {
         try {
