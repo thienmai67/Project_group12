@@ -14,6 +14,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
+import com.bumptech.glide.Glide
 import com.example.project_group12.data.AppDao
 import com.example.project_group12.data.AppDatabase
 import com.example.project_group12.databinding.ActivityMainBinding
@@ -165,6 +166,13 @@ class MainActivity : AppCompatActivity() {
             binding.layoutMiniPlayer.visibility = View.VISIBLE
             binding.tvMiniTitle.text = currentSong.title
             binding.tvMiniArtist.text = currentSong.artist
+
+            // Nạp ảnh đại diện bài hát vào Mini Player
+            Glide.with(this)
+                .load(currentSong.coverUrl)
+                .placeholder(android.R.drawable.ic_media_play)
+                .error(android.R.drawable.ic_media_play)
+                .into(binding.imgMiniCover)
 
             if (MusicPlayerManager.isPlaying) {
                 binding.btnMiniPlayPause.setImageResource(android.R.drawable.ic_media_pause)
