@@ -18,7 +18,9 @@ import java.io.File
 class DownloadActivity : AppCompatActivity() {
     private lateinit var binding: ActivityDownloadBinding
     private lateinit var dao: AppDao
-    private lateinit var adapter: AdminSongAdapter // Tái sử dụng lại AdminSongAdapter vì nó có nút Xóa
+
+    // ĐÃ SỬA: Sử dụng DownloadAdapter mới thay cho AdminSongAdapter
+    private lateinit var adapter: DownloadAdapter
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -37,18 +39,19 @@ class DownloadActivity : AppCompatActivity() {
     private fun setupRecyclerView() {
         binding.rvDownloadedSongs.layoutManager = LinearLayoutManager(this)
 
-        adapter = AdminSongAdapter(
+        // ĐÃ SỬA: Khởi tạo DownloadAdapter với 2 sự kiện: Bấm để nghe và Bấm để xóa
+        adapter = DownloadAdapter(
             songs = emptyList(),
-            onEditClick = { song ->
-                // Nút sửa (bỏ qua, thay bằng nút play)
+            onItemClick = { song ->
+                // Phát nhạc khi bấm vào Item
                 playLocalSong(song)
             },
             onDeleteClick = { song ->
+                // Xóa nhạc khi bấm vào icon thùng rác
                 deleteDownloadedSong(song)
             }
         )
         binding.rvDownloadedSongs.adapter = adapter
-
     }
 
     private fun loadDownloadedSongs() {

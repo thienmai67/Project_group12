@@ -13,7 +13,8 @@ interface AppDao {
     @Query("SELECT * FROM songs")
     fun getAllSongs(): List<Song>
 
-    @Query("SELECT * FROM songs WHERE title LIKE '%' || :searchQuery || '%'")
+    // --- ĐÃ SỬA: Thêm điều kiện tìm kiếm theo cột artist (Ca sĩ) ---
+    @Query("SELECT * FROM songs WHERE title LIKE '%' || :searchQuery || '%' OR artist LIKE '%' || :searchQuery || '%'")
     fun searchSongs(searchQuery: String): List<Song>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)

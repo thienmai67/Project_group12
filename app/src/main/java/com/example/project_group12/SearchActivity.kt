@@ -42,9 +42,13 @@ class SearchActivity : AppCompatActivity() {
         historyAdapter = HistoryAdapter(
             emptyList(),
             onItemClick = { query ->
+                // Đẩy chữ lên thanh tìm kiếm. Lệnh này sẽ tự động kích hoạt TextWatcher
+                // và TextWatcher sẽ tự gọi hàm performSearch()
                 binding.edtSearchInput.setText(query)
+                // Đưa con trỏ chuột về cuối dòng cho đẹp
                 binding.edtSearchInput.setSelection(query.length)
-                performSearch(query)
+
+                // ĐÃ XÓA performSearch(query) ở đây để tránh lỗi gọi Database 2 lần
             },
             onDeleteClick = { query ->
                 historyManager.removeQuery(query)
